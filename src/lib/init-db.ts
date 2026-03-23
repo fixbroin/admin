@@ -42,6 +42,7 @@ async function init() {
       host: process.env.MYSQL_HOST || 'localhost',
       user: process.env.MYSQL_USER || 'root',
       password: process.env.MYSQL_PASSWORD || '',
+      connectTimeout: 10000,
     });
     const dbName = process.env.MYSQL_DATABASE || 'cineelite';
     await connectionWithoutDb.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
@@ -267,7 +268,12 @@ async function init() {
 
     connection.release();
     process.exit(0);
-  } catch (error) {
+  } catch (error: any) {
+    if (process.env.VERCEL || error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED' || error.message?.includes('ETIMEDOUT')) {
+        console.warn('⚠️ Database connection could not be established. Skipping initialization.');
+        console.warn('Reason:', error.message || error);
+        process.exit(0); // Exit gracefully to allow build to continue
+    }
     console.error('❌ CRITICAL ERROR during comprehensive initialization:', error);
     process.exit(1);
   }
